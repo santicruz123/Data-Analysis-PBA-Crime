@@ -9,8 +9,9 @@ Este proyecto realiza un análisis estadístico y exploratorio sobre los hechos 
 Tecnologías utilizadas:
 Lenguaje: R
 Entorno: RStudio / R Markdown
-Librerías principales: tidyverse (dplyr, ggplot2), readr.
-
+* **Librerías principales:** * `tidyverse`: Para manipulación y limpieza de datos.
+  * `ggplot2`: Para la generación de reportes visuales y gráficos.
+  * `R Markdown`: Para la creación del reporte reproducible en HTML.
 Equipo y Roles:
 Introducción: Zai
 Limpieza y Curación de Datos: Franco
