@@ -1,0 +1,121 @@
+---
+title: "Análisis Exploratorio de Datos enfocado en Seguridad"
+author: "Fradin, Barbetta, Cruz, Aranda, Tapia"
+date: "2024"
+output: html_document
+---
+
+## 1. Limpieza y Preparación de Datos
+
+```{r setup, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# NOTA PROFESIONAL: Usamos una ruta relativa para que el código funcione en cualquier PC
+# Asegúrate de que el CSV esté dentro de una carpeta llamada 'data' junto a este archivo
+ruta <- "data/062_hechos-delictuosos-contra-la-propiedad-por-municipio.-provincia-de-buenos-aires.-anos-2014-2.csv"
+
+# Carga de datos con codificación para caracteres especiales
+data_seguridad <- read.csv(ruta, fileEncoding = "latin1", header = TRUE, sep = ";")
+
+# Eliminación de columnas nulas
+data_seguridad <- data_seguridad[, colSums(!is.na(data_seguridad)) > 0]
+
+```
+
+
+##2. Correcion de formatos
+
+```{r correccion}
+# Ajuste de tipos de datos: Valor a numérico y Periodo a fecha
+data_seguridad$Valor <- as.numeric(data_seguridad$Valor)
+data_seguridad$periodo <- as.Date(data_seguridad$periodo, format = "%d/%m/%Y")
+
+# Limpieza de NAs en la columna Valor
+data_seguridad$Valor[is.na(data_seguridad$Valor)] <- 0
+
+# Verificación de limpieza
+any(is.na(data_seguridad))
+```
+
+
+##3. Análisis Exploratorio
+Preguntas de análisis
+ ¿Cuáles son las tendencias en el Conurbano Bonaerense?
+
+ ¿Hay dispersión significativa entre municipios?
+
+ ¿Cuál es el municipio con mayor incidencia?
+
+
+```{r Preguntas}
+# Definición del filtro para Conurbano
+partidos_conurbano <- c("Almirante Brown", "Avellaneda", "Berazategui", "Esteban Echeverría", "Ezeiza", "Florencio Varela", "José C. Paz", "La Matanza", "Lanús", "Lomas de Zamora", "Malvinas Argentinas", "Merlo", "Moreno", "Quilmes", "San Fernando", "San Isidro", "San Miguel", "San Vicente", "Tigre", "Tres de Febrero", "Vicente López", "Hurlingham", "Ituzaingó")
+
+data_seguridad_filtrado <- data_seguridad %>% filter(Municipio %in% partidos_conurbano)
+
+# Tendencia anual por tipo
+total_anual2 <- data_seguridad_filtrado %>%
+  group_by(Año, Tipo) %>%
+  summarise(total_hechos = sum(Valor, na.rm = TRUE)) %>%
+  arrange(Año, Tipo)
+
+# Estadísticas por año
+total_hechos_por_año <- data_seguridad_filtrado %>%
+  group_by(Año, Municipio) %>%           
+  summarise(total_valor = sum(Valor, na.rm = TRUE)) %>% 
+  ungroup()
+
+estadisticas_totales_por_año <- total_hechos_por_año %>%
+  group_by(Año) %>%
+  summarise(
+    media = mean(total_valor, na.rm = TRUE),
+    mediana = median(total_valor, na.rm = TRUE),
+    desviacion = sd(total_valor, na.rm = TRUE),
+    maximo = max(total_valor, na.rm = TRUE)
+  )
+
+# Top 5 municipios 2019
+top_2019 <- data_seguridad_filtrado %>%
+  filter(Año == 2019) %>%
+  group_by(Municipio) %>%
+  summarise(total_hechos = sum(Valor, na.rm = TRUE)) %>%
+  slice_max(total_hechos, n = 5)
+
+# Municipio con mayor incidencia histórica
+partido_top <- data_seguridad_filtrado %>%
+  group_by(Municipio) %>%
+  summarise(total = sum(Valor, na.rm = TRUE)) %>%
+  slice_max(total, n = 1) %>%
+  pull(Municipio)
+
+datos_top_municipio <- data_seguridad_filtrado %>% filter(Municipio == partido_top)
+
+```
+
+##4. Visualización de Resultados
+
+```{r visualizacion}
+# Gráfico 1: Tendencia Anual
+ggplot(total_anual2, aes(x = Año, y = total_hechos, color = Tipo, group = Tipo)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Tendencia anual de hurtos y robos en el conurbano", y = "Total de hechos") +
+  theme_minimal() +
+  scale_color_manual(values = c("Total de hechos de hurtos" = "tomato", "Total de hechos de robos" = "steelblue")) +
+  scale_y_continuous(labels = label_comma(big.mark = ".", decimal.mark = ","))
+
+# Gráfico 2: Top Municipios 2019
+ggplot(top_2019, aes(x = reorder(Municipio, total_hechos), y = total_hechos)) +
+  geom_col(fill = "tomato") +
+  coord_flip() +
+  labs(title = "Top 5 municipios con más hechos en 2019", x = "Municipio", y = "Total de hechos") +
+  theme_minimal()
+```
+
+##5. Conclusiones
+Se confirmó que la tendencia de delitos en el conurbano (2014-2021) fue al alza, con un pico en 2019. La Matanza resultó ser el partido con mayor incidencia. La brecha entre la media y la desviación estándar sugiere una alta desigualdad delictiva entre los diferentes municipios.
+
+
+
